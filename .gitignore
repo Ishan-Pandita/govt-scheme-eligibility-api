@@ -21,10 +21,12 @@ env/
 .idea/
 *.swp
 *.swo
+*.code-workspace
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Testing
 .coverage
@@ -33,3 +35,17 @@ htmlcov/
 
 # Docker
 *.log
+
+# GSD Planning (local workflow artifacts)
+.planning/
+
+# GSD project guide (auto-generated)
+GEMINI.md
+
+# Source planning document (not part of the API codebase)
+govt_scheme_eligibility_api_final.md
+
+# Misc
+*.bak
+*.tmp
+*.temp
