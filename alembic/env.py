@@ -15,11 +15,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.config import get_settings
 from app.database import Base
 
-# Import all models here so Alembic can detect them
-# These will be populated in Phase 2
-# from app.models.user import User
-# from app.models.scheme import Scheme
-# from app.models.eligibility import EligibilityCriteria
+# Import all models so Alembic can detect them for autogenerate
+from app.models import User, Scheme, State, EligibilityCriteria  # noqa: F401
 
 # Alembic Config object
 config = context.config
