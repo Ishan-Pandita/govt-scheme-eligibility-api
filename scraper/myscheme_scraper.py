@@ -1,163 +1,235 @@
 """
-MyScheme.gov.in scraper using Playwright.
+MyScheme.gov.in full pipeline scraper.
 
-Extracts scheme name, ministry, description, eligibility criteria,
-benefit details, and application links from MyScheme.gov.in.
+Phase 1: Collect scheme slugs by typing keywords in search box
+         (triggers API calls we intercept — avoids pagination issue)
+Phase 2: Visit each detail page, extract eligibility text
+Phase 3: Save everything for AI structuring
 
-Usage:
-    python -m scraper.myscheme_scraper
-
-Output:
-    scraper/output/raw_schemes.json
+Usage: python -m scraper.myscheme_scraper
 """
-
 import asyncio
 import json
 import os
 import time
-from typing import Optional
+from playwright.async_api import async_playwright
 
-from playwright.async_api import async_playwright, Page, Browser
-from bs4 import BeautifulSoup
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+
+# Keywords to search — each triggers a different API response
+KEYWORDS = [
+    "", "pension", "scholarship", "insurance", "loan", "housing", "health",
+    "education", "agriculture", "women", "disability", "skill", "employment",
+    "subsidy", "child", "marriage", "maternity", "widow", "farmer",
+    "student", "minority", "tribal", "labour", "worker", "training",
+    "entrepreneur", "pradhan mantri", "national", "youth", "senior",
+    "food", "water", "sanitation", "energy", "solar", "electric",
+    "transport", "road", "rural", "urban", "digital", "internet",
+    "bank", "credit", "savings", "ration", "BPL", "APL",
+    "SC", "ST", "OBC", "EWS", "transgender", "orphan",
+    "fisherman", "weaver", "artisan", "handicraft", "textile",
+    "sports", "culture", "research", "fellowship", "PhD",
+    "startup", "MSME", "industry", "export", "trade",
+    "medical", "hospital", "surgery", "cancer", "kidney",
+    "marriage assistance", "death benefit", "accident", "funeral",
+    "bicycle", "laptop", "uniform", "books", "hostel",
+    "coaching", "competitive exam", "IAS", "engineering",
+    "law", "pharmacy", "nursing", "teacher", "professor",
+    "police", "army", "navy", "air force", "defence",
+    "construction worker", "domestic worker", "driver", "vendor",
+    "dairy", "poultry", "fisheries", "sericulture", "horticulture",
+    "irrigation", "drip", "greenhouse", "cold storage",
+    "toilet", "gas connection", "LPG", "electricity",
+    "drinking water", "well", "borewell", "tank",
+    "flood", "drought", "disaster", "relief", "compensation",
+    "land", "plot", "house", "flat", "rent",
+    "pension scheme", "old age", "destitute", "beggar",
+    "HIV", "AIDS", "TB", "leprosy", "mental health",
+    "eye", "hearing", "prosthetic", "wheelchair",
+    "Gujarat", "Maharashtra", "Tamil Nadu", "Karnataka", "Kerala",
+    "Rajasthan", "Bihar", "UP", "MP", "Odisha",
+    "West Bengal", "Assam", "Punjab", "Haryana", "Jharkhand",
+    "Chhattisgarh", "Uttarakhand", "HP", "Goa", "Sikkim",
+    "Tripura", "Meghalaya", "Mizoram", "Nagaland", "Manipur",
+    "Arunachal", "Delhi", "Puducherry", "Jammu", "Ladakh",
+    "Telangana", "Andhra Pradesh",
+]
+
+all_items = {}  # slug -> item data
 
 
-class MySchemesScraper:
-    """Scrapes government schemes from MyScheme.gov.in."""
+async def phase1_collect_slugs():
+    """Type keywords into search box, intercept API responses to collect slugs."""
+    print("=" * 60)
+    print("  PHASE 1: Collecting scheme slugs via keyword search")
+    print("=" * 60)
 
-    BASE_URL = "https://www.myscheme.gov.in"
-    SCHEMES_URL = f"{BASE_URL}/search"
-    OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
-    DELAY_BETWEEN_REQUESTS = 2  # seconds — be respectful
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=False, channel="chrome")
+        page = await browser.new_page(viewport={"width": 1920, "height": 1080})
 
-    def __init__(self):
-        self.schemes: list[dict] = []
-        self.browser: Optional[Browser] = None
-
-    async def start(self, max_pages: int = 10, max_schemes: int = 100):
-        """
-        Main entry point. Scrapes scheme listings and detail pages.
-
-        Args:
-            max_pages: Maximum listing pages to scrape
-            max_schemes: Maximum number of schemes to scrape details for
-        """
-        os.makedirs(self.OUTPUT_DIR, exist_ok=True)
-
-        async with async_playwright() as p:
-            self.browser = await p.chromium.launch(headless=True)
-            page = await self.browser.new_page()
-
-            # Step 1: Get scheme URLs from listing pages
-            scheme_urls = await self._scrape_listing_pages(page, max_pages)
-            print(f"Found {len(scheme_urls)} scheme URLs")
-
-            # Step 2: Scrape each scheme's detail page
-            for i, url in enumerate(scheme_urls[:max_schemes]):
+        async def on_response(response):
+            if "search/v6/schemes" in response.url and response.status == 200:
                 try:
-                    print(f"[{i+1}/{min(len(scheme_urls), max_schemes)}] Scraping: {url}")
-                    scheme_data = await self._scrape_scheme_detail(page, url)
-                    if scheme_data:
-                        self.schemes.append(scheme_data)
-                    await asyncio.sleep(self.DELAY_BETWEEN_REQUESTS)
-                except Exception as e:
-                    print(f"  Error scraping {url}: {e}")
-                    continue
+                    body = await response.json()
+                    items = body.get("data", {}).get("hits", {}).get("items", [])
+                    for item in items:
+                        fields = item.get("fields", {})
+                        slug = fields.get("slug", "")
+                        if slug and slug not in all_items:
+                            all_items[slug] = {
+                                "name": fields.get("schemeName", ""),
+                                "slug": slug,
+                                "ministry": fields.get("nodalMinistryName", ""),
+                                "description": fields.get("briefDescription", "")[:500],
+                                "scheme_type": "central" if fields.get("level", "").lower() == "central" else "state",
+                                "category": ", ".join(fields.get("schemeCategory", [])) if isinstance(fields.get("schemeCategory"), list) else "",
+                                "states": [s for s in fields.get("beneficiaryState", []) if s != "All"] if isinstance(fields.get("beneficiaryState"), list) else [],
+                            }
+                except:
+                    pass
 
-            await self.browser.close()
+        page.on("response", on_response)
 
-        # Save results
-        output_path = os.path.join(self.OUTPUT_DIR, "raw_schemes.json")
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(self.schemes, f, indent=2, ensure_ascii=False)
+        # Load initial page
+        await page.goto("https://www.myscheme.gov.in/search", wait_until="networkidle")
+        await page.wait_for_timeout(8000)
+        print(f"  Initial load: {len(all_items)} unique schemes")
 
-        print(f"\nSaved {len(self.schemes)} schemes to {output_path}")
+        # Find search box and type keywords
+        search_box = page.locator('input[type="search"], input[placeholder*="Search"], input[placeholder*="search"]')
+        if await search_box.count() == 0:
+            search_box = page.locator('input').first
 
-    async def _scrape_listing_pages(self, page: Page, max_pages: int) -> list[str]:
-        """Scrape scheme listing pages to collect scheme detail URLs."""
-        urls = []
-
-        for page_num in range(1, max_pages + 1):
+        for i, kw in enumerate(KEYWORDS):
             try:
-                listing_url = f"{self.SCHEMES_URL}?page={page_num}"
-                await page.goto(listing_url, wait_until="networkidle", timeout=30000)
-                await asyncio.sleep(self.DELAY_BETWEEN_REQUESTS)
+                await search_box.click()
+                await search_box.fill("")
+                await search_box.fill(kw)
+                await search_box.press("Enter")
+                await page.wait_for_timeout(3000)
 
-                # Extract scheme links from listing
-                content = await page.content()
-                soup = BeautifulSoup(content, "html.parser")
-
-                # MyScheme uses card-based layout with links
-                links = soup.find_all("a", href=True)
-                scheme_links = [
-                    link["href"] for link in links
-                    if "/scheme/" in link.get("href", "")
-                ]
-
-                if not scheme_links:
-                    print(f"  No more schemes found on page {page_num}")
-                    break
-
-                for href in scheme_links:
-                    full_url = href if href.startswith("http") else f"{self.BASE_URL}{href}"
-                    if full_url not in urls:
-                        urls.append(full_url)
-
-                print(f"  Page {page_num}: found {len(scheme_links)} scheme links")
-
+                if (i + 1) % 10 == 0:
+                    print(f"  Keyword {i+1}/{len(KEYWORDS)}: '{kw}' → {len(all_items)} unique schemes")
             except Exception as e:
-                print(f"  Error on listing page {page_num}: {e}")
+                print(f"  Keyword '{kw}' error: {e}")
+
+            if len(all_items) >= 500:
+                print(f"  Reached 500+ schemes!")
                 break
 
-        return urls
+        await browser.close()
 
-    async def _scrape_scheme_detail(self, page: Page, url: str) -> Optional[dict]:
-        """Scrape a single scheme detail page."""
-        await page.goto(url, wait_until="networkidle", timeout=30000)
-        content = await page.content()
-        soup = BeautifulSoup(content, "html.parser")
+    # Save slugs
+    slug_path = os.path.join(OUTPUT_DIR, "scheme_slugs.json")
+    with open(slug_path, "w", encoding="utf-8") as f:
+        json.dump(list(all_items.keys()), f, indent=2)
 
-        # Extract scheme data
-        name = self._extract_text(soup, "h1") or self._extract_text(soup, "h2")
-        if not name:
-            return None
+    listing_path = os.path.join(OUTPUT_DIR, "scheme_listings.json")
+    with open(listing_path, "w", encoding="utf-8") as f:
+        json.dump(list(all_items.values()), f, indent=2, ensure_ascii=False)
 
-        return {
-            "name": name.strip(),
-            "source_url": url,
-            "description": self._extract_section(soup, "description"),
-            "ministry": self._extract_section(soup, "ministry"),
-            "eligibility": self._extract_section(soup, "eligibility"),
-            "benefits": self._extract_section(soup, "benefits"),
-            "application_process": self._extract_section(soup, "application process"),
-            "documents_required": self._extract_section(soup, "documents required"),
-        }
+    print(f"\n  Phase 1 complete: {len(all_items)} unique schemes")
+    print(f"  Saved to: {listing_path}")
+    return list(all_items.keys())
 
-    def _extract_text(self, soup: BeautifulSoup, tag: str) -> Optional[str]:
-        """Extract text from first matching tag."""
-        element = soup.find(tag)
-        return element.get_text(strip=True) if element else None
 
-    def _extract_section(self, soup: BeautifulSoup, section_name: str) -> Optional[str]:
-        """Extract content from a named section on the page."""
-        # Try finding by heading text
-        for heading in soup.find_all(["h2", "h3", "h4"]):
-            if section_name.lower() in heading.get_text(strip=True).lower():
-                # Get the next sibling content
-                content_parts = []
-                for sibling in heading.find_next_siblings():
-                    if sibling.name in ["h2", "h3", "h4"]:
-                        break
-                    text = sibling.get_text(strip=True)
-                    if text:
-                        content_parts.append(text)
-                return " ".join(content_parts) if content_parts else None
-        return None
+async def phase2_scrape_details(slugs):
+    """Visit each detail page and extract eligibility text."""
+    print("\n" + "=" * 60)
+    print(f"  PHASE 2: Scraping {len(slugs)} detail pages")
+    print("=" * 60)
+
+    details = {}
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True, channel="chrome")
+        page = await browser.new_page()
+
+        for i, slug in enumerate(slugs):
+            url = f"https://www.myscheme.gov.in/schemes/{slug}"
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                await page.wait_for_timeout(5000)
+
+                body = await page.query_selector("body")
+                text = await body.inner_text() if body else ""
+
+                # Parse sections
+                sections = {}
+                current = "header"
+                section_keys = ["details", "benefits", "eligibility", "application process", "documents required"]
+                for line in text.split("\n"):
+                    s = line.strip()
+                    if s.lower() in section_keys:
+                        current = s.lower()
+                        continue
+                    if s.lower() in ("frequently asked questions", "sources and references", "feedback", "was this helpful?"):
+                        current = "skip"
+                        continue
+                    if current != "skip":
+                        sections.setdefault(current, []).append(s)
+
+                details[slug] = {
+                    "description": "\n".join(sections.get("details", [])[:15]).strip()[:1500],
+                    "benefits": "\n".join(sections.get("benefits", [])[:15]).strip()[:1500],
+                    "eligibility_text": "\n".join(sections.get("eligibility", [])[:15]).strip()[:1500],
+                    "application_process": "\n".join(sections.get("application process", [])[:10]).strip()[:1000],
+                    "documents": "\n".join(sections.get("documents required", [])[:10]).strip()[:1000],
+                }
+
+                if (i + 1) % 25 == 0:
+                    print(f"  [{i+1}/{len(slugs)}] {slug} — elig: {len(details[slug]['eligibility_text'])} chars")
+                    # Save checkpoint
+                    with open(os.path.join(OUTPUT_DIR, "scheme_details.json"), "w", encoding="utf-8") as f:
+                        json.dump(details, f, indent=2, ensure_ascii=False)
+
+            except Exception as e:
+                print(f"  [{i+1}/{len(slugs)}] {slug} ERROR: {e}")
+
+            await asyncio.sleep(1)
+
+        await browser.close()
+
+    # Final save
+    detail_path = os.path.join(OUTPUT_DIR, "scheme_details.json")
+    with open(detail_path, "w", encoding="utf-8") as f:
+        json.dump(details, f, indent=2, ensure_ascii=False)
+
+    print(f"\n  Phase 2 complete: {len(details)} detail pages scraped")
+    return details
 
 
 async def main():
-    """Run the scraper."""
-    scraper = MySchemesScraper()
-    await scraper.start(max_pages=5, max_schemes=50)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    start = time.time()
+
+    # Phase 1: Collect slugs
+    slugs = await phase1_collect_slugs()
+
+    # Phase 2: Scrape details
+    details = await phase2_scrape_details(slugs)
+
+    # Merge listings + details
+    listing_path = os.path.join(OUTPUT_DIR, "scheme_listings.json")
+    listings = json.load(open(listing_path, "r", encoding="utf-8"))
+
+    merged = []
+    for listing in listings:
+        slug = listing["slug"]
+        detail = details.get(slug, {})
+        merged.append({**listing, **detail})
+
+    out = os.path.join(OUTPUT_DIR, "myscheme_full.json")
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(merged, f, indent=2, ensure_ascii=False)
+
+    elapsed = (time.time() - start) / 60
+    print(f"\n{'='*60}")
+    print(f"  DONE! {len(merged)} schemes with eligibility data")
+    print(f"  Time: {elapsed:.1f} minutes")
+    print(f"  Output: {out}")
+    print(f"{'='*60}")
 
 
 if __name__ == "__main__":
