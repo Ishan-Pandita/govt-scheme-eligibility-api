@@ -10,7 +10,7 @@ import json
 import re
 import os
 
-INPUT = os.path.join("scraper", "output", "myscheme_full.json")
+INPUT = os.path.join("scraper", "output", "myscheme_full_all.json")
 OUTPUT = os.path.join("app", "data", "schemes_seed.json")
 
 STATE_CODES = {

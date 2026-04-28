@@ -65,7 +65,7 @@ class Scheme(Base):
     __tablename__ = "schemes"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(300), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     ministry: Mapped[str] = mapped_column(String(300), nullable=True)
     scheme_type: Mapped[str] = mapped_column(
