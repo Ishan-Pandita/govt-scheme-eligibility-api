@@ -1,0 +1,474 @@
+[
+  {
+    "name": "PM Kisan Samman Nidhi",
+    "description": "Income support of Rs 6,000 per year in three equal installments to all land holding farmer families.",
+    "ministry": "Ministry of Agriculture & Farmers Welfare",
+    "scheme_type": "central",
+    "benefit_amount": "₹6,000/year",
+    "benefit_description": "Direct income support of Rs 6,000 per year paid in 3 installments of Rs 2,000 each directly to bank accounts of farmers.",
+    "apply_link": "https://pmkisan.gov.in/",
+    "category": "agriculture",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "occupation", "operator": "eq", "value": "farmer", "description": "Must be a farmer"},
+      {"field": "annual_income", "operator": "lte", "value": "200000", "description": "Annual income up to ₹2 lakh"}
+    ]
+  },
+  {
+    "name": "Ayushman Bharat - Pradhan Mantri Jan Arogya Yojana (PM-JAY)",
+    "description": "Health insurance cover of Rs 5 lakh per family per year for secondary and tertiary care hospitalization.",
+    "ministry": "Ministry of Health and Family Welfare",
+    "scheme_type": "central",
+    "benefit_amount": "₹5,00,000/year health cover",
+    "benefit_description": "Free health insurance coverage of Rs 5 lakh per family per year covering hospitalization expenses at empaneled hospitals.",
+    "apply_link": "https://pmjay.gov.in/",
+    "category": "health",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "annual_income", "operator": "lte", "value": "500000", "description": "Annual income below ₹5 lakh"},
+      {"field": "occupation", "operator": "neq", "value": "government_employee", "description": "Not a government employee"}
+    ]
+  },
+  {
+    "name": "PM Awas Yojana - Gramin (PMAY-G)",
+    "description": "Financial assistance for construction of pucca house to eligible rural households.",
+    "ministry": "Ministry of Rural Development",
+    "scheme_type": "central",
+    "benefit_amount": "₹1,20,000 - ₹1,30,000",
+    "benefit_description": "Rs 1.20 lakh in plains and Rs 1.30 lakh in hilly/difficult areas for construction of houses with basic amenities.",
+    "apply_link": "https://pmayg.nic.in/",
+    "category": "housing",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "annual_income", "operator": "lte", "value": "300000", "description": "Low income household"},
+      {"field": "is_bpl", "operator": "eq", "value": "true", "description": "Below Poverty Line family"}
+    ]
+  },
+  {
+    "name": "PM Awas Yojana - Urban (PMAY-U)",
+    "description": "Affordable housing for urban poor with interest subsidy on home loans.",
+    "ministry": "Ministry of Housing and Urban Affairs",
+    "scheme_type": "central",
+    "benefit_amount": "Up to ₹2,67,000 interest subsidy",
+    "benefit_description": "Interest subsidy of 6.5% on housing loans up to Rs 6 lakh for EWS/LIG categories for a tenure of 20 years.",
+    "apply_link": "https://pmaymis.gov.in/",
+    "category": "housing",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "annual_income", "operator": "lte", "value": "600000", "description": "EWS/LIG category income"}
+    ]
+  },
+  {
+    "name": "Sukanya Samriddhi Yojana",
+    "description": "Small savings scheme for girl child with high interest rate and tax benefits.",
+    "ministry": "Ministry of Finance",
+    "scheme_type": "central",
+    "benefit_amount": "8.2% annual interest, tax-free",
+    "benefit_description": "Savings account for girl child below 10 years with 8.2% interest rate. Deposits qualify for tax deduction under Section 80C.",
+    "apply_link": "https://www.india.gov.in/sukanya-samriddhi-yojna",
+    "category": "women_and_child",
+    "gender_specific": "female",
+    "states": [],
+    "criteria": [
+      {"field": "gender", "operator": "eq", "value": "female", "description": "For girl child only"},
+      {"field": "age", "operator": "lte", "value": "10", "description": "Girl child must be below 10 years"}
+    ]
+  },
+  {
+    "name": "PM Mudra Yojana",
+    "description": "Micro-finance loans up to Rs 10 lakh for non-corporate, non-farm small/micro enterprises.",
+    "ministry": "Ministry of Finance",
+    "scheme_type": "central",
+    "benefit_amount": "Loans up to ₹10,00,000",
+    "benefit_description": "Collateral-free loans under 3 categories: Shishu (up to ₹50,000), Kishore (₹50,000-5 lakh), Tarun (5-10 lakh).",
+    "apply_link": "https://www.mudra.org.in/",
+    "category": "entrepreneurship",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "occupation", "operator": "in", "value": "self_employed,street_vendor,other", "description": "Non-corporate small enterprise owner"},
+      {"field": "age", "operator": "gte", "value": "18", "description": "Must be 18 or older"}
+    ]
+  },
+  {
+    "name": "Pradhan Mantri Matru Vandana Yojana (PMMVY)",
+    "description": "Maternity benefit of Rs 5,000 for pregnant and lactating mothers for first living child.",
+    "ministry": "Ministry of Women and Child Development",
+    "scheme_type": "central",
+    "benefit_amount": "₹5,000",
+    "benefit_description": "Cash benefit of Rs 5,000 in three installments for first pregnancy to partially compensate for wage loss during childbirth.",
+    "apply_link": "https://pmmvy.wcd.gov.in/",
+    "category": "women_and_child",
+    "gender_specific": "female",
+    "states": [],
+    "criteria": [
+      {"field": "gender", "operator": "eq", "value": "female", "description": "For women only"},
+      {"field": "age", "operator": "gte", "value": "19", "description": "Must be 19 or older"}
+    ]
+  },
+  {
+    "name": "PM SVANidhi - Street Vendor's AtmaNirbhar Nidhi",
+    "description": "Micro-credit facility for street vendors affected by COVID-19 to resume their livelihoods.",
+    "ministry": "Ministry of Housing and Urban Affairs",
+    "scheme_type": "central",
+    "benefit_amount": "Loans: ₹10,000 - ₹50,000",
+    "benefit_description": "Working capital loan of Rs 10,000 (1st), Rs 20,000 (2nd), Rs 50,000 (3rd tranche) with 7% interest subsidy.",
+    "apply_link": "https://pmsvanidhi.mohua.gov.in/",
+    "category": "entrepreneurship",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "occupation", "operator": "eq", "value": "street_vendor", "description": "Must be a street vendor"},
+      {"field": "age", "operator": "gte", "value": "18", "description": "Must be 18 or older"}
+    ]
+  },
+  {
+    "name": "Atal Pension Yojana (APY)",
+    "description": "Guaranteed minimum pension of Rs 1,000-5,000 per month after age 60 for unorganized sector workers.",
+    "ministry": "Ministry of Finance",
+    "scheme_type": "central",
+    "benefit_amount": "₹1,000 - ₹5,000/month pension",
+    "benefit_description": "Fixed pension of Rs 1,000 to Rs 5,000 per month after age 60 based on contribution. Government co-contributes 50%.",
+    "apply_link": "https://www.npscra.nsdl.co.in/scheme-details.php",
+    "category": "pension",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "age", "operator": "gte", "value": "18", "description": "Minimum age 18"},
+      {"field": "age", "operator": "lte", "value": "40", "description": "Maximum age 40"},
+      {"field": "occupation", "operator": "neq", "value": "government_employee", "description": "Not a government employee"}
+    ]
+  },
+  {
+    "name": "PM Garib Kalyan Ann Yojana (PMGKAY)",
+    "description": "Free food grains to eligible beneficiaries under the National Food Security Act.",
+    "ministry": "Ministry of Consumer Affairs, Food & Public Distribution",
+    "scheme_type": "central",
+    "benefit_amount": "5 kg free food grains/person/month",
+    "benefit_description": "5 kg of free food grains (rice/wheat) per person per month to all NFSA beneficiaries.",
+    "apply_link": "https://nfsa.gov.in/",
+    "category": "food_security",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "is_bpl", "operator": "eq", "value": "true", "description": "Must be BPL card holder"},
+      {"field": "annual_income", "operator": "lte", "value": "200000", "description": "Low income family"}
+    ]
+  },
+  {
+    "name": "National Scholarship Portal - Post Matric Scholarship for SC Students",
+    "description": "Scholarship for SC students studying at post-matriculation level.",
+    "ministry": "Ministry of Social Justice and Empowerment",
+    "scheme_type": "central",
+    "benefit_amount": "Tuition fees + maintenance allowance",
+    "benefit_description": "Full tuition fee reimbursement and monthly maintenance allowance for SC students in post-matric courses.",
+    "apply_link": "https://scholarships.gov.in/",
+    "category": "education",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "caste_category", "operator": "eq", "value": "sc", "description": "Must belong to SC category"},
+      {"field": "is_student", "operator": "eq", "value": "true", "description": "Must be a student"},
+      {"field": "annual_income", "operator": "lte", "value": "250000", "description": "Family income up to ₹2.5 lakh"}
+    ]
+  },
+  {
+    "name": "National Scholarship Portal - Post Matric Scholarship for ST Students",
+    "description": "Scholarship for ST students studying at post-matriculation level.",
+    "ministry": "Ministry of Tribal Affairs",
+    "scheme_type": "central",
+    "benefit_amount": "Tuition fees + maintenance allowance",
+    "benefit_description": "Full tuition fee reimbursement and monthly maintenance allowance for ST students in post-matric courses.",
+    "apply_link": "https://scholarships.gov.in/",
+    "category": "education",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "caste_category", "operator": "eq", "value": "st", "description": "Must belong to ST category"},
+      {"field": "is_student", "operator": "eq", "value": "true", "description": "Must be a student"},
+      {"field": "annual_income", "operator": "lte", "value": "250000", "description": "Family income up to ₹2.5 lakh"}
+    ]
+  },
+  {
+    "name": "Post Matric Scholarship for OBC Students",
+    "description": "Financial assistance for OBC students pursuing post-matriculation education.",
+    "ministry": "Ministry of Social Justice and Empowerment",
+    "scheme_type": "central",
+    "benefit_amount": "Tuition fees + allowance",
+    "benefit_description": "Scholarship covering tuition fees and maintenance allowance for OBC students in recognized institutions.",
+    "apply_link": "https://scholarships.gov.in/",
+    "category": "education",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "caste_category", "operator": "eq", "value": "obc", "description": "Must belong to OBC category"},
+      {"field": "is_student", "operator": "eq", "value": "true", "description": "Must be a student"},
+      {"field": "annual_income", "operator": "lte", "value": "100000", "description": "Family income up to ₹1 lakh"}
+    ]
+  },
+  {
+    "name": "Pradhan Mantri Jeevan Jyoti Bima Yojana (PMJJBY)",
+    "description": "Life insurance cover of Rs 2 lakh at premium of Rs 436 per year.",
+    "ministry": "Ministry of Finance",
+    "scheme_type": "central",
+    "benefit_amount": "₹2,00,000 life cover",
+    "benefit_description": "Life insurance coverage of Rs 2 lakh for death due to any reason at annual premium of Rs 436.",
+    "apply_link": "https://www.jansuraksha.gov.in/",
+    "category": "insurance",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "age", "operator": "gte", "value": "18", "description": "Minimum age 18"},
+      {"field": "age", "operator": "lte", "value": "50", "description": "Maximum age 50"}
+    ]
+  },
+  {
+    "name": "Pradhan Mantri Suraksha Bima Yojana (PMSBY)",
+    "description": "Accident insurance cover of Rs 2 lakh at premium of Rs 20 per year.",
+    "ministry": "Ministry of Finance",
+    "scheme_type": "central",
+    "benefit_amount": "₹2,00,000 accident cover",
+    "benefit_description": "Accidental death and disability coverage at just Rs 20/year. Rs 2 lakh for death, Rs 1 lakh for partial disability.",
+    "apply_link": "https://www.jansuraksha.gov.in/",
+    "category": "insurance",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "age", "operator": "gte", "value": "18", "description": "Minimum age 18"},
+      {"field": "age", "operator": "lte", "value": "70", "description": "Maximum age 70"}
+    ]
+  },
+  {
+    "name": "Pradhan Mantri Ujjwala Yojana 2.0",
+    "description": "Free LPG connections to women from BPL households.",
+    "ministry": "Ministry of Petroleum and Natural Gas",
+    "scheme_type": "central",
+    "benefit_amount": "Free LPG connection + first refill",
+    "benefit_description": "Free LPG connection with security deposit waiver and free first refill for BPL women.",
+    "apply_link": "https://www.pmuy.gov.in/",
+    "category": "energy",
+    "gender_specific": "female",
+    "states": [],
+    "criteria": [
+      {"field": "gender", "operator": "eq", "value": "female", "description": "For women only"},
+      {"field": "is_bpl", "operator": "eq", "value": "true", "description": "BPL household"},
+      {"field": "age", "operator": "gte", "value": "18", "description": "Must be 18 or older"}
+    ]
+  },
+  {
+    "name": "Stand-Up India Scheme",
+    "description": "Bank loans between Rs 10 lakh and Rs 1 crore for SC/ST and women entrepreneurs.",
+    "ministry": "Ministry of Finance",
+    "scheme_type": "central",
+    "benefit_amount": "Loans ₹10 lakh - ₹1 crore",
+    "benefit_description": "Composite loans for setting up greenfield enterprises in manufacturing, services, or trading sector.",
+    "apply_link": "https://www.standupmitra.in/",
+    "category": "entrepreneurship",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "age", "operator": "gte", "value": "18", "description": "Must be 18 or older"}
+    ]
+  },
+  {
+    "name": "Pradhan Mantri Kaushal Vikas Yojana (PMKVY)",
+    "description": "Free skill development training and certification for Indian youth.",
+    "ministry": "Ministry of Skill Development and Entrepreneurship",
+    "scheme_type": "central",
+    "benefit_amount": "Free training + ₹8,000 reward",
+    "benefit_description": "Short-term skill training (150-300 hours) with certification. Monetary reward of Rs 8,000 on successful assessment.",
+    "apply_link": "https://www.pmkvyofficial.org/",
+    "category": "skill_development",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "age", "operator": "gte", "value": "15", "description": "Minimum age 15"},
+      {"field": "age", "operator": "lte", "value": "45", "description": "Maximum age 45"}
+    ]
+  },
+  {
+    "name": "Indira Gandhi National Old Age Pension Scheme (IGNOAPS)",
+    "description": "Monthly pension for BPL senior citizens aged 60 and above.",
+    "ministry": "Ministry of Rural Development",
+    "scheme_type": "central",
+    "benefit_amount": "₹200 - ₹500/month",
+    "benefit_description": "Monthly pension of Rs 200 (age 60-79) and Rs 500 (age 80+) for BPL beneficiaries.",
+    "apply_link": "https://nsap.nic.in/",
+    "category": "pension",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "age", "operator": "gte", "value": "60", "description": "Must be 60 or older"},
+      {"field": "is_bpl", "operator": "eq", "value": "true", "description": "Below Poverty Line"}
+    ]
+  },
+  {
+    "name": "Indira Gandhi National Disability Pension Scheme",
+    "description": "Monthly pension for BPL persons with severe or multiple disabilities aged 18-79.",
+    "ministry": "Ministry of Rural Development",
+    "scheme_type": "central",
+    "benefit_amount": "₹300/month",
+    "benefit_description": "Monthly pension of Rs 300 for disabled persons with 80%+ disability from BPL families.",
+    "apply_link": "https://nsap.nic.in/",
+    "category": "disability",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "is_disabled", "operator": "eq", "value": "true", "description": "Must have disability"},
+      {"field": "age", "operator": "gte", "value": "18", "description": "Minimum age 18"},
+      {"field": "is_bpl", "operator": "eq", "value": "true", "description": "Below Poverty Line"}
+    ]
+  },
+  {
+    "name": "Beti Bachao Beti Padhao",
+    "description": "Scheme to address declining child sex ratio and promote education of girls.",
+    "ministry": "Ministry of Women and Child Development",
+    "scheme_type": "central",
+    "benefit_amount": "Awareness + institutional support",
+    "benefit_description": "Multi-sectoral interventions for survival, protection and education of the girl child.",
+    "apply_link": "https://wcd.nic.in/bbbp-schemes",
+    "category": "women_and_child",
+    "gender_specific": "female",
+    "states": [],
+    "criteria": [
+      {"field": "gender", "operator": "eq", "value": "female", "description": "For girls/women"},
+      {"field": "age", "operator": "lte", "value": "18", "description": "Up to 18 years"}
+    ]
+  },
+  {
+    "name": "National Means-cum-Merit Scholarship (NMMSS)",
+    "description": "Scholarship of Rs 12,000 per annum for meritorious students from economically weaker sections.",
+    "ministry": "Ministry of Education",
+    "scheme_type": "central",
+    "benefit_amount": "₹12,000/year",
+    "benefit_description": "Annual scholarship for studying in Class IX to XII in government schools to reduce dropouts.",
+    "apply_link": "https://scholarships.gov.in/",
+    "category": "education",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "is_student", "operator": "eq", "value": "true", "description": "Must be a student"},
+      {"field": "annual_income", "operator": "lte", "value": "350000", "description": "Family income up to ₹3.5 lakh"}
+    ]
+  },
+  {
+    "name": "PM Vishwakarma Yojana",
+    "description": "End-to-end support for traditional artisans and craftspeople through training, loans, and certification.",
+    "ministry": "Ministry of Micro, Small & Medium Enterprises",
+    "scheme_type": "central",
+    "benefit_amount": "Loans up to ₹3 lakh + training",
+    "benefit_description": "Skill training, toolkit incentive of ₹15,000, collateral-free loans up to ₹3 lakh at 5% interest.",
+    "apply_link": "https://pmvishwakarma.gov.in/",
+    "category": "skill_development",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "occupation", "operator": "in", "value": "self_employed,other", "description": "Traditional artisan/craftsperson"},
+      {"field": "age", "operator": "gte", "value": "18", "description": "Must be 18 or older"}
+    ]
+  },
+  {
+    "name": "PM Fasal Bima Yojana (PMFBY)",
+    "description": "Crop insurance scheme providing financial support to farmers in case of crop failure.",
+    "ministry": "Ministry of Agriculture & Farmers Welfare",
+    "scheme_type": "central",
+    "benefit_amount": "Crop loss compensation",
+    "benefit_description": "Insurance coverage for crop loss due to natural calamities at low premium rates (2% for Kharif, 1.5% for Rabi).",
+    "apply_link": "https://pmfby.gov.in/",
+    "category": "agriculture",
+    "gender_specific": null,
+    "states": [],
+    "criteria": [
+      {"field": "occupation", "operator": "eq", "value": "farmer", "description": "Must be a farmer"},
+      {"field": "land_owned_acres", "operator": "gte", "value": "0.1", "description": "Must own farmland"}
+    ]
+  },
+  {
+    "name": "Kalaignar Magalir Urimai Thogai (Tamil Nadu)",
+    "description": "Monthly financial assistance of Rs 1,000 to women heads of families in Tamil Nadu.",
+    "ministry": "Government of Tamil Nadu",
+    "scheme_type": "state",
+    "benefit_amount": "₹1,000/month",
+    "benefit_description": "Direct cash transfer of Rs 1,000 per month to eligible women heads of families.",
+    "apply_link": "https://www.tn.gov.in/",
+    "category": "women_and_child",
+    "gender_specific": "female",
+    "states": ["TN"],
+    "criteria": [
+      {"field": "gender", "operator": "eq", "value": "female", "description": "For women only"},
+      {"field": "state", "operator": "eq", "value": "Tamil Nadu", "description": "Tamil Nadu residents only"},
+      {"field": "age", "operator": "gte", "value": "21", "description": "Minimum age 21"},
+      {"field": "annual_income", "operator": "lte", "value": "250000", "description": "Family income up to ₹2.5 lakh"}
+    ]
+  },
+  {
+    "name": "CM's Breakfast Scheme (Tamil Nadu)",
+    "description": "Free breakfast for government school students in Classes I to V in Tamil Nadu.",
+    "ministry": "Government of Tamil Nadu",
+    "scheme_type": "state",
+    "benefit_amount": "Free breakfast daily",
+    "benefit_description": "Nutritious breakfast provided free of cost to primary school students in government schools.",
+    "apply_link": "https://www.tn.gov.in/",
+    "category": "food_security",
+    "gender_specific": null,
+    "states": ["TN"],
+    "criteria": [
+      {"field": "state", "operator": "eq", "value": "Tamil Nadu", "description": "Tamil Nadu residents only"},
+      {"field": "is_student", "operator": "eq", "value": "true", "description": "Must be a student"},
+      {"field": "age", "operator": "lte", "value": "11", "description": "Primary school age"}
+    ]
+  },
+  {
+    "name": "CMCHIS - Chief Minister's Comprehensive Health Insurance Scheme (Tamil Nadu)",
+    "description": "Cashless medical and surgical treatment at empaneled hospitals in Tamil Nadu.",
+    "ministry": "Government of Tamil Nadu",
+    "scheme_type": "state",
+    "benefit_amount": "Up to ₹5,00,000 health cover",
+    "benefit_description": "Cashless treatment covering 1,027 procedures at government and private hospitals.",
+    "apply_link": "https://www.cmchistn.com/",
+    "category": "health",
+    "gender_specific": null,
+    "states": ["TN"],
+    "criteria": [
+      {"field": "state", "operator": "eq", "value": "Tamil Nadu", "description": "Tamil Nadu residents only"},
+      {"field": "annual_income", "operator": "lte", "value": "500000", "description": "Annual income up to ₹5 lakh"}
+    ]
+  },
+  {
+    "name": "Moovalur Ramamirtham Ammaiyar Higher Education Assurance Scheme (Tamil Nadu)",
+    "description": "Financial assistance for girl students completing undergraduate degree in Tamil Nadu.",
+    "ministry": "Government of Tamil Nadu",
+    "scheme_type": "state",
+    "benefit_amount": "₹1,000/month",
+    "benefit_description": "Monthly assistance of Rs 1,000 for girl students pursuing undergraduate education who studied in government schools.",
+    "apply_link": "https://www.tn.gov.in/",
+    "category": "education",
+    "gender_specific": "female",
+    "states": ["TN"],
+    "criteria": [
+      {"field": "gender", "operator": "eq", "value": "female", "description": "For women only"},
+      {"field": "state", "operator": "eq", "value": "Tamil Nadu", "description": "Tamil Nadu residents only"},
+      {"field": "is_student", "operator": "eq", "value": "true", "description": "Must be a student"},
+      {"field": "age", "operator": "gte", "value": "17", "description": "Undergraduate age"}
+    ]
+  },
+  {
+    "name": "Innuyir Kaappom Scheme (Tamil Nadu)",
+    "description": "Road safety scheme providing free treatment and compensation for road accident victims in Tamil Nadu.",
+    "ministry": "Government of Tamil Nadu",
+    "scheme_type": "state",
+    "benefit_amount": "Free treatment + compensation",
+    "benefit_description": "Free emergency treatment within golden hour and compensation for road accident victims.",
+    "apply_link": "https://www.tn.gov.in/",
+    "category": "health",
+    "gender_specific": null,
+    "states": ["TN"],
+    "criteria": [
+      {"field": "state", "operator": "eq", "value": "Tamil Nadu", "description": "Tamil Nadu residents only"}
+    ]
+  }
+]
