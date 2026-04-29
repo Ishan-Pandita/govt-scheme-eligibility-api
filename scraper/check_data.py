@@ -1,8 +1,8 @@
-"""Full Day 3 audit — check everything against requirements."""
+"""Complete data inventory — what exactly is in the database right now."""
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 
 DATABASE_URL = "postgresql+asyncpg://schemes_user:schemes_pass@localhost:5432/schemes_db"
 
@@ -11,75 +11,140 @@ async def audit():
     sf = sessionmaker(engine, class_=AsyncSession)
 
     async with sf() as session:
-        queries = {
-            "Total schemes": "SELECT count(*) FROM schemes",
-            "Total criteria": "SELECT count(*) FROM eligibility_criteria",
-            "Schemes WITH criteria": "SELECT count(DISTINCT scheme_id) FROM eligibility_criteria",
-            "Schemes WITHOUT criteria": """SELECT count(*) FROM schemes s LEFT JOIN eligibility_criteria ec ON ec.scheme_id = s.id WHERE ec.id IS NULL""",
-            "Total states": "SELECT count(*) FROM states",
-            "Total users": "SELECT count(*) FROM users",
-            "Central schemes": "SELECT count(*) FROM schemes WHERE scheme_type = 'central'",
-            "State schemes": "SELECT count(*) FROM schemes WHERE scheme_type = 'state'",
-            "Schemes with description": "SELECT count(*) FROM schemes WHERE description IS NOT NULL AND description != ''",
-            "Schemes with apply_link": "SELECT count(*) FROM schemes WHERE apply_link IS NOT NULL AND apply_link != ''",
-            "Schemes with benefit_description": "SELECT count(*) FROM schemes WHERE benefit_description IS NOT NULL AND benefit_description != ''",
-            "Criteria field: age": "SELECT count(*) FROM eligibility_criteria WHERE field = 'age'",
-            "Criteria field: gender": "SELECT count(*) FROM eligibility_criteria WHERE field = 'gender'",
-            "Criteria field: caste_category": "SELECT count(*) FROM eligibility_criteria WHERE field = 'caste_category'",
-            "Criteria field: is_disabled": "SELECT count(*) FROM eligibility_criteria WHERE field = 'is_disabled'",
-            "Criteria field: is_student": "SELECT count(*) FROM eligibility_criteria WHERE field = 'is_student'",
-            "Criteria field: occupation": "SELECT count(*) FROM eligibility_criteria WHERE field = 'occupation'",
-            "Criteria field: annual_income": "SELECT count(*) FROM eligibility_criteria WHERE field = 'annual_income'",
-            "Criteria field: state": "SELECT count(*) FROM eligibility_criteria WHERE field = 'state'",
-            "Criteria field: nationality": "SELECT count(*) FROM eligibility_criteria WHERE field = 'nationality'",
-            "Criteria field: is_bpl": "SELECT count(*) FROM eligibility_criteria WHERE field = 'is_bpl'",
-            "Criteria field: marital_status": "SELECT count(*) FROM eligibility_criteria WHERE field = 'marital_status'",
-            "Criteria field: is_minority": "SELECT count(*) FROM eligibility_criteria WHERE field = 'is_minority'",
-        }
+        print("=" * 70)
+        print("  COMPLETE DATA INVENTORY")
+        print("=" * 70)
 
-        # Priority schemes check
-        priority = [
-            "PM Kisan", "Ayushman Bharat", "PM Awas Yojana", "Sukanya Samriddhi",
-            "PM Mudra", "Atal Pension", "PM SVANidhi", "Kanyashree", "Stand-Up India",
-            "Pradhan Mantri Suraksha Bima"
+        # ── TABLE: schemes ──
+        r = await session.execute(text("SELECT count(*) FROM schemes"))
+        print(f"\n1. SCHEMES TABLE: {r.scalar()} rows")
+
+        r = await session.execute(text("SELECT count(*) FROM schemes WHERE scheme_type = 'central'"))
+        central = r.scalar()
+        r = await session.execute(text("SELECT count(*) FROM schemes WHERE scheme_type = 'state'"))
+        state = r.scalar()
+        print(f"   Central: {central} | State: {state}")
+
+        r = await session.execute(text("SELECT count(*) FROM schemes WHERE description != '' AND description IS NOT NULL"))
+        print(f"   With description: {r.scalar()}")
+        r = await session.execute(text("SELECT count(*) FROM schemes WHERE benefit_description != '' AND benefit_description IS NOT NULL"))
+        print(f"   With benefit_description: {r.scalar()}")
+        r = await session.execute(text("SELECT count(*) FROM schemes WHERE apply_link != '' AND apply_link IS NOT NULL"))
+        print(f"   With apply_link: {r.scalar()}")
+        r = await session.execute(text("SELECT count(*) FROM schemes WHERE category IS NOT NULL"))
+        print(f"   With category: {r.scalar()}")
+
+        # Sample 5
+        print("\n   Sample schemes:")
+        r = await session.execute(text("""
+            SELECT name, ministry, scheme_type, category
+            FROM schemes ORDER BY id LIMIT 5
+        """))
+        for row in r.fetchall():
+            n = row[0][:55] if row[0] else ""
+            m = row[1][:35] if row[1] else ""
+            print(f"     - {n:<55} | {m:<35} | {row[2]} | {row[3]}")
+
+        # ── TABLE: eligibility_criteria ──
+        r = await session.execute(text("SELECT count(*) FROM eligibility_criteria"))
+        print(f"\n2. ELIGIBILITY_CRITERIA TABLE: {r.scalar()} rows")
+
+        r = await session.execute(text("""
+            SELECT field, count(*) as cnt FROM eligibility_criteria
+            GROUP BY field ORDER BY cnt DESC
+        """))
+        print("   By field:")
+        for row in r.fetchall():
+            print(f"     {row[0]:<20} {row[1]:>5}")
+
+        # Sample criteria for PM Kisan
+        print("\n   Sample — PM Kisan Samman Nidhi criteria:")
+        r = await session.execute(text("""
+            SELECT ec.field, ec.operator, ec.value, ec.description
+            FROM eligibility_criteria ec
+            JOIN schemes s ON s.id = ec.scheme_id
+            WHERE s.name = 'PM Kisan Samman Nidhi'
+        """))
+        for row in r.fetchall():
+            print(f"     {row[0]} {row[1]} {row[2]} -- {row[3]}")
+
+        # Sample criteria for Sukanya
+        print("\n   Sample — Sukanya Samriddhi Yojana criteria:")
+        r = await session.execute(text("""
+            SELECT ec.field, ec.operator, ec.value, ec.description
+            FROM eligibility_criteria ec
+            JOIN schemes s ON s.id = ec.scheme_id
+            WHERE s.name = 'Sukanya Samriddhi Yojana'
+        """))
+        for row in r.fetchall():
+            print(f"     {row[0]} {row[1]} {row[2]} -- {row[3]}")
+
+        # Schemes with real criteria (not just nationality)
+        r = await session.execute(text("""
+            SELECT count(DISTINCT scheme_id) FROM eligibility_criteria
+            WHERE field NOT IN ('nationality')
+        """))
+        print(f"\n   Schemes with real criteria (not just nationality): {r.scalar()}")
+
+        r = await session.execute(text("""
+            SELECT count(DISTINCT scheme_id) FROM eligibility_criteria
+            WHERE field NOT IN ('nationality', 'state')
+        """))
+        print(f"   Schemes with deep criteria (age/gender/income/caste etc): {r.scalar()}")
+
+        # ── TABLE: states ──
+        r = await session.execute(text("SELECT count(*) FROM states"))
+        print(f"\n3. STATES TABLE: {r.scalar()} rows")
+        r = await session.execute(text("SELECT name, code FROM states ORDER BY name LIMIT 10"))
+        print("   Sample: " + ", ".join([f"{row[0]}({row[1]})" for row in r.fetchall()]))
+
+        # ── TABLE: scheme_states ──
+        r = await session.execute(text("SELECT count(*) FROM scheme_states"))
+        print(f"\n4. SCHEME_STATES (junction): {r.scalar()} links")
+        r = await session.execute(text("""
+            SELECT st.name, count(*) as cnt FROM scheme_states ss
+            JOIN states st ON st.id = ss.state_id
+            GROUP BY st.name ORDER BY cnt DESC LIMIT 10
+        """))
+        print("   Top states by scheme count:")
+        for row in r.fetchall():
+            print(f"     {row[0]:<25} {row[1]:>5} schemes")
+
+        # ── TABLE: users ──
+        r = await session.execute(text("SELECT count(*) FROM users"))
+        print(f"\n5. USERS TABLE: {r.scalar()} rows")
+        r = await session.execute(text("SELECT email, role, is_active FROM users"))
+        for row in r.fetchall():
+            print(f"   {row[0]} | role={row[1]} | active={row[2]}")
+
+        # ── CATEGORY BREAKDOWN ──
+        print(f"\n6. CATEGORY BREAKDOWN:")
+        r = await session.execute(text("""
+            SELECT category, count(*) as cnt FROM schemes
+            WHERE category IS NOT NULL
+            GROUP BY category ORDER BY cnt DESC
+        """))
+        for row in r.fetchall():
+            print(f"     {row[0]:<35} {row[1]:>5}")
+
+        # ── DATA QUALITY ──
+        print(f"\n7. DATA QUALITY SUMMARY:")
+        r = await session.execute(text("SELECT count(*) FROM schemes"))
+        total = r.scalar()
+        checks = [
+            ("Schemes with name", "SELECT count(*) FROM schemes WHERE name IS NOT NULL AND name != ''"),
+            ("Schemes with ministry", "SELECT count(*) FROM schemes WHERE ministry IS NOT NULL AND ministry != ''"),
+            ("Schemes with apply_link", "SELECT count(*) FROM schemes WHERE apply_link IS NOT NULL AND apply_link != ''"),
+            ("Schemes with description", "SELECT count(*) FROM schemes WHERE description IS NOT NULL AND description != ''"),
+            ("Schemes with >=1 criterion", "SELECT count(DISTINCT scheme_id) FROM eligibility_criteria"),
+            ("Schemes with >=2 criteria", "SELECT count(*) FROM (SELECT scheme_id, count(*) c FROM eligibility_criteria GROUP BY scheme_id HAVING count(*) >= 2) t"),
+            ("Schemes with >=3 criteria", "SELECT count(*) FROM (SELECT scheme_id, count(*) c FROM eligibility_criteria GROUP BY scheme_id HAVING count(*) >= 3) t"),
         ]
-
-        print("=" * 60)
-        print("  DAY 3 FULL AUDIT")
-        print("=" * 60)
-
-        print("\n--- Database Counts ---")
-        for label, query in queries.items():
-            r = await session.execute(text(query))
+        for label, q in checks:
+            r = await session.execute(text(q))
             val = r.scalar()
-            print(f"  {label}: {val}")
-
-        print("\n--- Priority Schemes in DB ---")
-        for name in priority:
-            r = await session.execute(text(
-                f"SELECT s.id, s.name, (SELECT count(*) FROM eligibility_criteria WHERE scheme_id = s.id) as crit_count FROM schemes s WHERE s.name ILIKE :q LIMIT 1"
-            ), {"q": f"%{name}%"})
-            row = r.fetchone()
-            if row:
-                print(f"  FOUND: {row[1][:60]} (criteria: {row[2]})")
-            else:
-                print(f"  MISSING: {name}")
-
-        # Category distribution
-        print("\n--- Category Distribution (top 10) ---")
-        r = await session.execute(text(
-            "SELECT category, count(*) as cnt FROM schemes WHERE category IS NOT NULL GROUP BY category ORDER BY cnt DESC LIMIT 10"
-        ))
-        for row in r.fetchall():
-            print(f"  {row[0]}: {row[1]}")
-
-        # State distribution (top 10)
-        print("\n--- State Scheme Distribution (top 10 by ministry) ---")
-        r = await session.execute(text(
-            "SELECT ministry, count(*) as cnt FROM schemes WHERE scheme_type = 'state' GROUP BY ministry ORDER BY cnt DESC LIMIT 10"
-        ))
-        for row in r.fetchall():
-            print(f"  {row[0]}: {row[1]}")
+            pct = val * 100 // total
+            print(f"     {label:<35} {val:>5} ({pct}%)")
 
     await engine.dispose()
 
