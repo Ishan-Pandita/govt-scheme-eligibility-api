@@ -42,8 +42,38 @@ htmlcov/
 # GSD project guide (auto-generated)
 GEMINI.md
 
-# Source planning document (not part of the API codebase)
+# Planning docs (not part of the API codebase)
 govt_scheme_eligibility_api_final.md
+day3_fix_plan.md
+day3_closeout_plan.md
+DAY3_REPORT.md
+SCRAPER_GUIDE.md
+
+# Raw data files (too large for GitHub, regeneratable)
+updated_data.csv
+scraper/output/
+scraper/raw_data/
+scraper/missing_criteria_slugs.json
+
+# One-off scripts (not needed in production)
+generate_schemes.py
+reseed.py
+scraper/add_baseline_criteria.py
+scraper/add_state_criteria.py
+scraper/analyze_csv.py
+scraper/check_data.py
+scraper/data_gov_downloader.py
+scraper/enrich_tier3.py
+scraper/enrich_from_kaggle.py
+scraper/final_fixes.py
+scraper/fix_db.py
+scraper/fix_state_criteria.py
+scraper/generate_criteria_from_names.py
+scraper/get_missing_criteria.py
+scraper/insert_criteria.py
+scraper/rescrape_eligibility.py
+scraper/test_scrape.py
+scraper/add_priority_schemes.py
 
 # Misc
 *.bak
