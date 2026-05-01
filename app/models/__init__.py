@@ -8,6 +8,7 @@ and so other modules can import from app.models directly.
 from app.models.user import User
 from app.models.scheme import Scheme, State, scheme_state
 from app.models.eligibility import EligibilityCriteria
+from app.models.profile import UserProfile, EligibilityHistory
 
 __all__ = [
     "User",
@@ -15,4 +16,6 @@ __all__ = [
     "State",
     "scheme_state",
     "EligibilityCriteria",
+    "UserProfile",
+    "EligibilityHistory",
 ]

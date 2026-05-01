@@ -5,6 +5,7 @@ Stores registered API users with hashed passwords and roles.
 """
 
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import String, Boolean, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -33,9 +34,13 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # Relationships (defined in Phase 8)
-    # profile = relationship("UserProfile", back_populates="user", uselist=False)
-    # eligibility_history = relationship("EligibilityHistory", back_populates="user")
+    # Relationships
+    profile: Mapped[Optional["UserProfile"]] = relationship(
+        back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    eligibility_history: Mapped[list["EligibilityHistory"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email}, role={self.role})>"
