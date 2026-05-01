@@ -1,61 +1,100 @@
-# Python
+# Python bytecode and build artifacts
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 *.egg-info/
-dist/
-build/
 .eggs/
+build/
+dist/
+pip-wheel-metadata/
 
-# Virtual environment
+# Virtual environments
 venv/
 .venv/
 env/
+ENV/
 
-# Environment variables
+# Local environment and secrets
 .env
+.env.*
+!.env.example
+*.secret
+*.secrets
+secrets.*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
 
-# IDE
+# Local databases, dumps, and backups
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.dump
+*.sql
+*.bak
+*.backup
+
+# Logs and runtime output
+logs/
+*.log
+*.out
+*.err
+uvicorn*.log
+
+# Test and coverage output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+.hypothesis/
+test-results/
+reports/
+
+# Type checkers, linters, and tool caches
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+.tox/
+.nox/
+
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *.code-workspace
 
-# OS
+# OS metadata
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Testing
-.coverage
-htmlcov/
-.pytest_cache/
+# Docker/local overrides
+docker-compose.override.yml
 
-# Docker
-*.log
-
-# GSD Planning (local workflow artifacts)
+# GSD/local planning artifacts
 .planning/
-
-# GSD project guide (auto-generated)
 GEMINI.md
-
-# Planning docs (not part of the API codebase)
 govt_scheme_eligibility_api_final.md
 day3_fix_plan.md
 day3_closeout_plan.md
 DAY3_REPORT.md
 SCRAPER_GUIDE.md
 
-# Raw data files (too large for GitHub, regeneratable)
+# Raw/generated scraper data
 updated_data.csv
 scraper/output/
 scraper/raw_data/
 scraper/missing_criteria_slugs.json
 
-# One-off scripts (not needed in production)
+# One-off local scripts and experiments
 generate_schemes.py
 reseed.py
 scraper/add_baseline_criteria.py
@@ -75,7 +114,8 @@ scraper/rescrape_eligibility.py
 scraper/test_scrape.py
 scraper/add_priority_schemes.py
 
-# Misc
-*.bak
+# Temporary files
 *.tmp
 *.temp
+*.orig
+*.rej

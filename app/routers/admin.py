@@ -130,7 +130,6 @@ async def update_scheme(
         setattr(scheme, field, value)
 
     await db.flush()
-    await db.refresh(scheme)
 
     return _admin_scheme_response(scheme)
 
@@ -245,7 +244,7 @@ async def clear_cache(
     _admin: User = Depends(require_admin),
 ):
     """
-    Flush all cached eligibility results from Redis.
+    Flush all cached eligibility results.
     Use after bulk scheme updates to ensure fresh results.
     """
     from app.services.cache_service import CacheService

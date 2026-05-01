@@ -1,5 +1,5 @@
 """
-Redis caching service.
+Eligibility result caching service.
 
 Caches eligibility results using a hash of the user profile as the key.
 Cache entries expire after a configurable TTL (default: 1 hour).
@@ -7,14 +7,13 @@ Cache entries expire after a configurable TTL (default: 1 hour).
 
 import hashlib
 import json
+from contextlib import suppress
 from typing import Optional
-
-from redis.asyncio import Redis
 
 
 class CacheService:
     """
-    Async Redis cache for eligibility query results.
+    Async cache for eligibility query results.
 
     Cache key is derived from a SHA-256 hash of the sorted, serialized
     user profile dict — identical profiles always hit the same cache entry.
@@ -23,7 +22,7 @@ class CacheService:
     DEFAULT_TTL = 3600  # 1 hour in seconds
     KEY_PREFIX = "eligibility:"
 
-    def __init__(self, redis: Redis):
+    def __init__(self, redis):
         self.redis = redis
 
     @staticmethod
@@ -55,12 +54,18 @@ class CacheService:
             Deserialized list of matched schemes, or None on cache miss.
         """
         key = self._make_key(profile)
-        cached = await self.redis.get(key)
+        try:
+            cached = await self.redis.get(key)
+        except Exception:
+            return None
 
         if cached is None:
             return None
 
-        return json.loads(cached)
+        try:
+            return json.loads(cached)
+        except json.JSONDecodeError:
+            return None
 
     async def set(self, profile: dict, results: list[dict], ttl: int = None) -> None:
         """
@@ -73,12 +78,14 @@ class CacheService:
         """
         key = self._make_key(profile)
         value = json.dumps(results, default=str)
-        await self.redis.set(key, value, ex=ttl or self.DEFAULT_TTL)
+        with suppress(Exception):
+            await self.redis.set(key, value, ex=ttl or self.DEFAULT_TTL)
 
     async def delete(self, profile: dict) -> None:
         """Invalidate cached results for a specific profile."""
         key = self._make_key(profile)
-        await self.redis.delete(key)
+        with suppress(Exception):
+            await self.redis.delete(key)
 
     async def flush_all(self) -> int:
         """
@@ -89,16 +96,20 @@ class CacheService:
         """
         pattern = f"{self.KEY_PREFIX}*"
         keys = []
-        async for key in self.redis.scan_iter(match=pattern, count=100):
-            keys.append(key)
+        try:
+            async for key in self.redis.scan_iter(match=pattern, count=100):
+                keys.append(key)
+        except Exception:
+            return 0
 
         if keys:
-            await self.redis.delete(*keys)
+            with suppress(Exception):
+                await self.redis.delete(*keys)
 
         return len(keys)
 
     async def health_check(self) -> bool:
-        """Check if Redis is reachable."""
+        """Check if the configured cache backend is reachable."""
         try:
             await self.redis.ping()
             return True

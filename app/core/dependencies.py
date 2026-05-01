@@ -8,7 +8,7 @@ Provides injectable dependencies for route handlers:
 """
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,12 +17,14 @@ from app.core.security import decode_token
 from app.database import get_db
 from app.models.user import User
 
-# Token URL points to the login endpoint
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+bearer_scheme = HTTPBearer(
+    description="Paste the access token returned by /api/v1/auth/login.",
+    auto_error=False,
+)
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
@@ -37,6 +39,10 @@ async def get_current_user(
     )
 
     try:
+        if credentials is None:
+            raise credentials_exception
+
+        token = credentials.credentials
         payload = decode_token(token)
         user_id: str = payload.get("sub")
         token_type: str = payload.get("type")

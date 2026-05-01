@@ -126,11 +126,18 @@ async def get_eligibility_history(
 
     history = []
     for entry in entries:
+        results_snapshot = json.loads(entry.results_snapshot)
+        if isinstance(results_snapshot, list):
+            results_snapshot = {
+                "total_matched": entry.total_matched,
+                "schemes": results_snapshot,
+            }
+
         history.append(
             EligibilityHistoryResponse(
                 id=entry.id,
                 profile_snapshot=json.loads(entry.profile_snapshot),
-                results_snapshot=json.loads(entry.results_snapshot),
+                results_snapshot=results_snapshot,
                 total_matched=entry.total_matched,
                 checked_at=entry.checked_at,
             )

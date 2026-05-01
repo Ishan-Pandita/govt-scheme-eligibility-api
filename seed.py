@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 sys.path.insert(0, os.path.dirname(__file__))
 
 from app.database import async_session, engine, Base
+from app.config import get_settings
 from app.models import User, Scheme, State, EligibilityCriteria, scheme_state
 
 
@@ -149,22 +150,34 @@ async def seed_admin_user(session: AsyncSession):
     """Create a default admin user if none exists."""
     from passlib.context import CryptContext
 
+    settings = get_settings()
+    if not settings.ADMIN_EMAIL or not settings.ADMIN_PASSWORD:
+        print("  Admin user: skipped (ADMIN_EMAIL/ADMIN_PASSWORD not configured)")
+        return
+
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-    result = await session.execute(select(User).where(User.role == "admin"))
-    if result.scalar_one_or_none():
-        print("  Admin user: already exists")
+    result = await session.execute(select(User).where(User.role == "admin").order_by(User.id))
+    existing_admin = result.scalars().first()
+
+    if existing_admin:
+        existing_admin.email = settings.ADMIN_EMAIL
+        existing_admin.hashed_password = pwd_context.hash(settings.ADMIN_PASSWORD)
+        existing_admin.is_active = True
+        existing_admin.role = "admin"
+        await session.commit()
+        print(f"  Admin user: updated ({settings.ADMIN_EMAIL})")
         return
 
     admin = User(
-        email="admin@schemesapi.gov.in",
-        hashed_password=pwd_context.hash("admin123"),
+        email=settings.ADMIN_EMAIL,
+        hashed_password=pwd_context.hash(settings.ADMIN_PASSWORD),
         role="admin",
         is_active=True,
     )
     session.add(admin)
     await session.commit()
-    print("  Admin user: created (admin@schemesapi.gov.in / admin123)")
+    print(f"  Admin user: created ({settings.ADMIN_EMAIL})")
 
 
 async def verify_counts(session: AsyncSession):

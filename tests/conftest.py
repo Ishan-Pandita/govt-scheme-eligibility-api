@@ -5,8 +5,6 @@ Provides test database session, test client, and pre-created
 test users (regular + admin) for all test modules.
 """
 
-import asyncio
-import json
 import os
 from typing import AsyncGenerator
 
@@ -14,33 +12,35 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 # Override settings before importing app
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://schemes_user:schemes_pass@localhost:5432/schemes_test_db"
-os.environ["REDIS_URL"] = "redis://localhost:6379/1"  # Use DB 1 for tests
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["REDIS_URL"] = "memory://test"
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["SECRET_KEY"] = "test-secret-key-not-for-production"
+os.environ["PRIVATE_API_KEY"] = "test-private-api-key"
+os.environ["ADMIN_EMAIL"] = "admin@example.com"
+os.environ["ADMIN_PASSWORD"] = "AdminPass123"
 
 from app.database import Base, get_db
 from app.main import app
 from app.core.security import hash_password, create_access_token
 from app.models import User, Scheme, State, EligibilityCriteria
+from app.services.memory_redis import MemoryRedis
 
 
 # Test database engine
 TEST_DATABASE_URL = os.environ["DATABASE_URL"]
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+test_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+    echo=False,
+)
 test_session_factory = async_sessionmaker(
     test_engine, class_=AsyncSession, expire_on_commit=False
 )
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create a session-scoped event loop."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -65,12 +65,22 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     Provide an async HTTP test client with the test DB injected.
     """
     async def override_get_db():
-        yield db_session
+        try:
+            yield db_session
+            await db_session.commit()
+        except Exception:
+            await db_session.rollback()
+            raise
 
     app.dependency_overrides[get_db] = override_get_db
+    app.state.redis = MemoryRedis()
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers={"X-API-Key": os.environ["PRIVATE_API_KEY"]},
+    ) as ac:
         yield ac
 
     app.dependency_overrides.clear()

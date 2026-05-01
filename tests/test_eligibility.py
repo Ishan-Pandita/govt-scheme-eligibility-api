@@ -166,13 +166,18 @@ class TestEligibilityEndpoint:
         assert response.status_code == 422
 
     async def test_cache_header_present(self, client: AsyncClient, seeded_schemes):
-        response = await client.post("/api/v1/eligibility/check", json={
+        payload = {
             "age": 30,
             "occupation": "farmer",
-        })
-        assert response.status_code == 200
-        # X-Cache header should be present
-        assert "X-Cache" in response.headers
+        }
+
+        first_response = await client.post("/api/v1/eligibility/check", json=payload)
+        assert first_response.status_code == 200
+        assert first_response.headers["X-Cache"] == "MISS"
+
+        second_response = await client.post("/api/v1/eligibility/check", json=payload)
+        assert second_response.status_code == 200
+        assert second_response.headers["X-Cache"] == "HIT"
 
 
 @pytest.mark.asyncio
@@ -290,3 +295,31 @@ class TestAdminEndpoints:
         )
         assert response.status_code == 201
         assert response.json()["field"] == "is_bpl"
+
+    async def test_delete_criterion(self, client: AsyncClient, admin_headers, seeded_schemes):
+        scheme_id = seeded_schemes[0].id
+        create_response = await client.post(
+            f"/api/v1/admin/schemes/{scheme_id}/criteria",
+            json={
+                "field": "is_disabled",
+                "operator": "eq",
+                "value": "true",
+            },
+            headers=admin_headers,
+        )
+        criterion_id = create_response.json()["id"]
+
+        response = await client.delete(
+            f"/api/v1/admin/criteria/{criterion_id}",
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["id"] == criterion_id
+
+    async def test_clear_cache(self, client: AsyncClient, admin_headers):
+        response = await client.delete(
+            "/api/v1/admin/cache/clear",
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+        assert "Cache cleared" in response.json()["message"]

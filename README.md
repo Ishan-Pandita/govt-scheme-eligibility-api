@@ -1,152 +1,233 @@
 # Government Scheme Eligibility API
 
-A FastAPI-based backend API that takes user profile inputs (age, income, caste, state, gender, occupation, disability status) and returns all government schemes they qualify for — with application links, deadlines, and benefit details.
+A private FastAPI backend that evaluates a citizen profile against structured Indian government scheme rules and returns the schemes the person may qualify for, including benefits, eligibility reasons, and application links.
 
-## Why This Exists
+This project turns scheme discovery into a developer-friendly API. A bank, NGO, student portal, CSC center, or chatbot can send a user profile and receive matching schemes instead of hardcoding eligibility logic in each application.
 
-India has 4,500+ central and state government schemes worth lakhs of crores in benefits. The majority of eligible citizens never claim them because there's no clean, developer-friendly way to query eligibility programmatically. This API fills that gap.
+## Highlights
 
-**Input:** User profile (age, gender, state, income, caste, occupation, disability status)
-**Output:** List of matching schemes with eligibility reasons, benefit details, and application links
+- FastAPI REST API with Swagger and ReDoc documentation
+- PostgreSQL schema with SQLAlchemy 2.0 and Alembic migrations
+- Data-driven eligibility rule engine, so new schemes can be added without code changes
+- 4,500+ seeded scheme records from collected/structured public scheme data
+- Private-by-default API using `X-API-Key`
+- JWT authentication for user and admin flows
+- Admin-only scheme and criteria management
+- PostgreSQL full-text search with GIN index
+- In-memory eligibility cache, no Redis required for local use
+- Profile saving and authenticated eligibility history
+- Scripted test suite with 52 passing tests
+
+## Why This Project Matters
+
+Government benefits are difficult to discover because eligibility depends on age, income, caste category, state, gender, occupation, disability status, student status, and other conditions. This API centralizes those rules and exposes them through one consistent interface.
+
+The core design choice is the rule engine. Eligibility criteria are stored as database rows:
+
+| field | operator | value |
+|---|---|---|
+| occupation | eq | farmer |
+| annual_income | lte | 200000 |
+| age | gte | 18 |
+
+That makes the system extensible: adding or updating a scheme is a data operation, not a code deployment.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Framework | FastAPI (async) |
-| Database | PostgreSQL 16 |
-| ORM | SQLAlchemy 2.0 + Alembic |
+| API | FastAPI |
+| Database | PostgreSQL |
+| ORM and migrations | SQLAlchemy 2.0, Alembic |
 | Validation | Pydantic v2 |
-| Auth | JWT (python-jose + passlib/bcrypt) |
-| Caching | Redis 7 |
-| Testing | Pytest + httpx (AsyncClient) |
-| Deployment | Docker + Docker Compose |
+| Auth | API key, JWT, python-jose, passlib |
+| Cache | In-memory async cache |
+| Search | PostgreSQL full-text search |
+| Tests | Pytest, pytest-asyncio, httpx |
+| Deployment | Docker, Docker Compose |
 
-## Quick Start
+## Security Model
 
-### Prerequisites
+The API is private by default.
 
-- Docker and Docker Compose installed
-- Git
+Every `/api/v1/*` endpoint requires:
 
-### Setup
-
-```bash
-# Clone the repository
-git clone <repo-url>
-cd govt-scheme-eligibility-api
-
-# Start all services (FastAPI + PostgreSQL + Redis)
-docker compose up -d --build
-
-# Run database migrations
-docker compose exec api alembic upgrade head
-
-# Seed the database with 4,500+ real schemes
-docker compose exec api python seed.py
+```text
+X-API-Key: <PRIVATE_API_KEY>
 ```
 
-The API is now running at **http://localhost:8000**
+Admin endpoints require both:
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- Health Check: http://localhost:8000/health
+```text
+X-API-Key: <PRIVATE_API_KEY>
+Authorization: Bearer <admin_access_token>
+```
 
-### Environment Variables
+Do not commit real secrets. Put them only in `.env`. The `.env` file is ignored by Git.
 
-Copy `.env.example` to `.env` and configure:
+## Project Structure
+
+```text
+app/
+  main.py                    FastAPI app, middleware, router registration
+  config.py                  Environment-based settings
+  database.py                Async SQLAlchemy engine and session
+  core/
+    api_key.py               Private API key dependency
+    dependencies.py          JWT user/admin dependencies
+    rate_limit.py            slowapi limiter
+    security.py              Password hashing and JWT helpers
+  models/                    SQLAlchemy models
+  routers/                   Auth, eligibility, profile, admin routes
+  schemas/                   Pydantic request/response schemas
+  services/
+    eligibility_engine.py    Data-driven rule engine
+    cache_service.py         Cache abstraction
+    memory_redis.py          In-memory cache backend
+  data/
+    schemes_seed.json        Seed data for schemes and criteria
+alembic/                     Database migrations
+scraper/                     Data collection and conversion scripts
+tests/                       Automated API and service tests
+scripts/                     Local run/test helper scripts
+```
+
+## Prerequisites
+
+- Python 3.12
+- PostgreSQL running locally
+- A virtual environment with dependencies installed
+
+Redis is not required. The API uses an in-memory cache by default because caching is a performance optimization, not a correctness requirement.
+
+## Environment Setup
+
+Create `.env` from `.env.example`:
+
+```powershell
+copy .env.example .env
+```
+
+Then set private local values:
 
 ```env
-DATABASE_URL=postgresql+asyncpg://schemes_user:schemes_pass@db:5432/schemes_db
-REDIS_URL=redis://redis:6379
-SECRET_KEY=your-secret-key-here
+DATABASE_URL=postgresql+asyncpg://schemes_user:schemes_pass@localhost:5432/schemes_db
+REDIS_URL=memory://local
+SECRET_KEY=replace-with-a-long-random-secret
+PRIVATE_API_KEY=replace-with-your-private-api-key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 ENVIRONMENT=development
+SQL_ECHO=false
+ADMIN_EMAIL=your-admin-email@example.com
+ADMIN_PASSWORD=your-private-admin-password
 ```
 
-## API Endpoints
+Use strong values for `SECRET_KEY`, `PRIVATE_API_KEY`, and `ADMIN_PASSWORD`.
 
-All endpoints are prefixed with `/api/v1`.
+## Run Locally
 
-### Authentication
+From the project root:
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/v1/auth/register` | Register new user | No |
-| POST | `/api/v1/auth/login` | Login, get JWT tokens | No |
-| POST | `/api/v1/auth/refresh` | Refresh expired token | No |
-| GET | `/api/v1/auth/me` | Get current user profile | Yes |
+```powershell
+.\venv\Scripts\Activate.ps1
+python -m alembic upgrade head
+python seed.py
+python -m uvicorn app.main:app --reload
+```
 
-### Eligibility
+Open:
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/v1/eligibility/check` | Check scheme eligibility | No |
-| GET | `/api/v1/eligibility/history` | View past checks | Yes |
+```text
+http://localhost:8000/docs
+```
 
-### Schemes
+Daily development run after the database has already been migrated and seeded:
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/v1/schemes` | List schemes (with filters) | No |
-| GET | `/api/v1/schemes/search?q=keyword` | Search schemes | No |
-| GET | `/api/v1/schemes/{id}` | Get scheme details | No |
+```powershell
+python -m uvicorn app.main:app --reload
+```
 
-### User Profile
+Helper script:
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/v1/profile` | Save/update profile | Yes |
-| GET | `/api/v1/profile` | Get saved profile | Yes |
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_api.ps1
+```
 
-### Admin (requires admin role)
+Skip seeding with:
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/v1/admin/schemes` | Create scheme | Admin |
-| PUT | `/api/v1/admin/schemes/{id}` | Update scheme | Admin |
-| DELETE | `/api/v1/admin/schemes/{id}` | Soft-delete scheme | Admin |
-| POST | `/api/v1/admin/schemes/{id}/criteria` | Add criterion | Admin |
-| DELETE | `/api/v1/admin/criteria/{id}` | Remove criterion | Admin |
-| DELETE | `/api/v1/admin/cache/clear` | Flush Redis cache | Admin |
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_api.ps1 -SkipSeed
+```
 
-## Example: Check Eligibility
+## Health Check
 
-```bash
-curl -X POST http://localhost:8000/api/v1/eligibility/check \
-  -H "Content-Type: application/json" \
-  -d '{
-    "age": 25,
-    "gender": "female",
-    "annual_income": 180000,
+```powershell
+Invoke-RestMethod http://localhost:8000/health
+```
+
+Expected shape:
+
+```json
+{
+  "status": "ok",
+  "database": "connected",
+  "cache": "connected",
+  "cache_backend": "memory"
+}
+```
+
+## Use The API
+
+All versioned endpoints require the private API key.
+
+PowerShell example:
+
+```powershell
+$headers = @{
+  "X-API-Key" = "<your-private-api-key>"
+}
+
+$body = @{
+  age = 30
+  gender = "male"
+  annual_income = 150000
+  state = "Tamil Nadu"
+  caste_category = "obc"
+  occupation = "farmer"
+  is_disabled = $false
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Uri "http://localhost:8000/api/v1/eligibility/check" `
+  -Method Post `
+  -Headers $headers `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+Response shape:
+
+```json
+{
+  "profile_summary": {
+    "age": 30,
+    "gender": "male",
+    "annual_income": 150000,
     "state": "Tamil Nadu",
     "caste_category": "obc",
     "occupation": "farmer",
     "is_disabled": false
-  }'
-```
-
-Response:
-```json
-{
-  "profile_summary": {
-    "age": 25,
-    "gender": "female",
-    "annual_income": 180000,
-    "state": "Tamil Nadu",
-    "caste_category": "obc",
-    "occupation": "farmer"
   },
-  "total_matched": 8,
+  "total_matched": 3,
   "schemes": [
     {
-      "id": 3,
-      "name": "PM Kisan Samman Nidhi",
-      "ministry": "Ministry of Agriculture & Farmers Welfare",
-      "benefit_amount": "Rs 6,000/year",
-      "apply_link": "https://pmkisan.gov.in/",
+      "id": 1,
+      "name": "Example Scheme",
+      "ministry": "Example Ministry",
+      "benefit_amount": "Rs 6000/year",
+      "apply_link": "https://example.gov.in",
       "category": "agriculture",
       "matched_because": [
         "occupation eq farmer: pass",
@@ -157,79 +238,118 @@ Response:
 }
 ```
 
-## Architecture
+## Swagger Testing
 
-```
-app/
-├── main.py              # FastAPI app, middleware, router registration
-├── config.py            # Pydantic settings from environment
-├── database.py          # Async SQLAlchemy engine + session
-├── core/
-│   ├── security.py      # Password hashing, JWT creation/verification
-│   └── dependencies.py  # Auth dependencies (get_current_user, require_admin)
-├── models/
-│   ├── user.py          # User model
-│   ├── scheme.py        # Scheme, State, scheme_state junction
-│   ├── eligibility.py   # EligibilityCriteria model
-│   └── profile.py       # UserProfile, EligibilityHistory
-├── schemas/
-│   ├── user.py          # Auth request/response schemas
-│   ├── scheme.py        # Scheme + eligibility schemas
-│   └── profile.py       # Profile + history schemas
-├── routers/
-│   ├── auth.py          # Authentication endpoints
-│   ├── eligibility.py   # Eligibility check + scheme listing
-│   ├── profile.py       # User profile + history
-│   └── admin.py         # Admin CRUD for schemes
-├── services/
-│   ├── eligibility_engine.py  # Data-driven rule engine
-│   └── cache_service.py       # Redis caching layer
-└── data/
-    └── schemes_seed.json      # 4,500+ verified schemes
-```
+1. Start the API.
+2. Open `http://localhost:8000/docs`.
+3. Click **Authorize**.
+4. Paste your `PRIVATE_API_KEY` into the API key field.
+5. Test public-private endpoints such as `/api/v1/eligibility/check`.
 
-### Rule Engine Design
+For admin routes:
 
-The eligibility engine is **data-driven** — no hardcoded rules in Python. Each scheme has multiple `EligibilityCriteria` rows in the database:
+1. Use `/api/v1/auth/login` with `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`.
+2. Copy the returned `access_token`.
+3. Click **Authorize** again.
+4. Paste the token into the bearer token field.
+5. Call `/api/v1/admin/*` endpoints.
 
-| scheme_id | field | operator | value |
-|-----------|-------|----------|-------|
-| 1 | occupation | eq | farmer |
-| 1 | annual_income | lte | 200000 |
-| 1 | age | gte | 18 |
+## Main Endpoints
 
-Supported operators: `eq`, `neq`, `gte`, `lte`, `gt`, `lt`, `in`, `not_in`, `contains`
+| Method | Endpoint | Purpose | Auth |
+|---|---|---|---|
+| POST | `/api/v1/auth/register` | Create user | API key |
+| POST | `/api/v1/auth/login` | Get access and refresh tokens | API key |
+| POST | `/api/v1/auth/refresh` | Refresh tokens | API key |
+| GET | `/api/v1/auth/me` | Current user | API key + JWT |
+| POST | `/api/v1/eligibility/check` | Match a profile to schemes | API key |
+| GET | `/api/v1/eligibility/history` | User eligibility history | API key + JWT |
+| GET | `/api/v1/schemes` | List schemes with filters | API key |
+| GET | `/api/v1/schemes/search?q=keyword` | Full-text scheme search | API key |
+| GET | `/api/v1/schemes/{id}` | Scheme details | API key |
+| POST | `/api/v1/profile` | Save user profile | API key + JWT |
+| GET | `/api/v1/profile` | Get saved profile | API key + JWT |
+| POST | `/api/v1/admin/schemes` | Create scheme | API key + admin JWT |
+| PUT | `/api/v1/admin/schemes/{id}` | Update scheme | API key + admin JWT |
+| DELETE | `/api/v1/admin/schemes/{id}` | Soft-delete scheme | API key + admin JWT |
+| POST | `/api/v1/admin/schemes/{id}/criteria` | Add criterion | API key + admin JWT |
+| DELETE | `/api/v1/admin/criteria/{id}` | Delete criterion | API key + admin JWT |
+| DELETE | `/api/v1/admin/cache/clear` | Clear eligibility cache | API key + admin JWT |
 
-Adding a new scheme requires **zero code changes** — just insert rows into the database.
+## Run Tests
 
-## Running Tests
-
-```bash
-# Create test database first
-docker compose exec db psql -U schemes_user -c "CREATE DATABASE schemes_test_db;"
-
-# Run tests with coverage
-docker compose exec api pytest --cov=app --cov-report=term-missing
-
-# Run specific test file
-docker compose exec api pytest tests/test_auth.py -v
+```powershell
+python -m pytest
 ```
 
-## Data Sources
+With coverage:
 
-The 4,500+ schemes were collected from:
-1. **MyScheme.gov.in** — Playwright scraper extracting structured scheme data
-2. **data.gov.in** — Official open government CSV datasets
-3. **Kaggle datasets** — Supplementary enrichment for eligibility criteria
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_tests.ps1
+```
 
-All priority schemes (PM Kisan, Ayushman Bharat, PM Awas Yojana, etc.) were manually verified against official ministry websites.
+Current verification status:
 
-## Default Admin Account
+```text
+52 passed
+```
 
-After seeding: `admin@schemesapi.gov.in` / `admin123`
+The test suite covers:
 
-Change these credentials immediately in production.
+- Registration, login, refresh, and `/auth/me`
+- Private API key enforcement
+- Eligibility rule operators
+- Eligibility matching and cache headers
+- Scheme listing, filtering, search, and detail lookup
+- Profile save/get
+- Eligibility history
+- Admin authorization and scheme management
 
----
+## Data And Seeding
 
-*Built with FastAPI, PostgreSQL, Redis, Docker*
+The seed script loads:
+
+- Indian states and union territories
+- Scheme metadata
+- Scheme-to-state links
+- Eligibility criteria
+- Admin account from `.env`
+
+Run seeding once after database setup:
+
+```powershell
+python seed.py
+```
+
+You do not need to seed every time. The script is idempotent: existing schemes are skipped and the admin account is updated from `.env`.
+
+## Docker Option
+
+Docker Compose runs the API and PostgreSQL:
+
+```powershell
+docker compose up -d --build
+docker compose exec api alembic upgrade head
+docker compose exec api python seed.py
+```
+
+The default Docker setup still uses the in-memory cache. Redis can be reintroduced later if the API is deployed with multiple workers or high traffic.
+
+## Recruiter Notes
+
+This project demonstrates backend engineering across:
+
+- API design with protected public and admin surfaces
+- Relational data modeling for real-world eligibility rules
+- Async SQLAlchemy with migrations
+- JWT authentication and role-based authorization
+- API key based private access control
+- Rule-engine design instead of hardcoded business logic
+- PostgreSQL full-text search
+- Automated test coverage across auth, admin, eligibility, and profiles
+- Docker-ready local deployment
+- Practical tradeoff decisions, such as removing Redis as a required dependency for a simpler local build
+
+## Important Disclaimer
+
+Government scheme eligibility can change. This project is a technical backend and portfolio-quality API. Before real-world public use, scheme data and eligibility rules should be reviewed and verified against official government sources.

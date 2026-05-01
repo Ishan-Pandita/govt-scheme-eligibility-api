@@ -2,7 +2,7 @@
 Eligibility and schemes router.
 
 Endpoints for checking eligibility, listing schemes, searching, and
-retrieving individual scheme details. Integrates Redis caching and
+retrieving individual scheme details. Integrates eligibility caching and
 auto-saves history for authenticated users.
 """
 
@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
+from app.core.rate_limit import limiter
 from app.core.security import decode_token
 from app.database import get_db
 from app.models.profile import EligibilityHistory
@@ -64,6 +65,7 @@ def _get_user_id_from_request(request: Request) -> Optional[int]:
     response_model=EligibilityCheckResponse,
     summary="Check which schemes a user profile is eligible for",
 )
+@limiter.limit("10/minute")
 async def check_eligibility(
     profile: UserProfileInput,
     request: Request,
@@ -75,7 +77,7 @@ async def check_eligibility(
     The engine evaluates each scheme's eligibility criteria against the
     provided profile fields. Missing fields are skipped, not penalized.
 
-    Results are cached in Redis for 1 hour. The X-Cache header indicates
+    Results are cached for 1 hour. The X-Cache header indicates
     whether the result was served from cache (HIT) or computed fresh (MISS).
     """
     profile_dict = profile.model_dump()
@@ -104,23 +106,23 @@ async def check_eligibility(
         if hasattr(val, "value"):
             profile_summary[key] = val.value
 
+    response_data = EligibilityCheckResponse(
+        profile_summary=profile_summary,
+        total_matched=len(matched),
+        schemes=[MatchedScheme(**s) for s in matched],
+    )
+
     # Auto-save to history if user is authenticated
     user_id = _get_user_id_from_request(request)
     if user_id:
         history_entry = EligibilityHistory(
             user_id=user_id,
             profile_snapshot=json.dumps(profile_summary, default=str),
-            results_snapshot=json.dumps(matched, default=str),
+            results_snapshot=response_data.model_dump_json(),
             total_matched=len(matched),
         )
         db.add(history_entry)
         await db.flush()
-
-    response_data = EligibilityCheckResponse(
-        profile_summary=profile_summary,
-        total_matched=len(matched),
-        schemes=[MatchedScheme(**s) for s in matched],
-    )
 
     # Return with cache header
     response = JSONResponse(content=response_data.model_dump(mode="json"))
@@ -199,13 +201,36 @@ async def search_schemes(
 ):
     """
     Full-text search across scheme name, description, ministry, and category.
-    """
-    search_pattern = f"%{q}%"
 
+    PostgreSQL uses a tsvector/tsquery search path. SQLite-based tests use an
+    ILIKE-compatible fallback so the public API stays testable without services.
+    """
     query = (
         select(Scheme)
         .where(Scheme.is_active == True)
-        .where(
+        .options(selectinload(Scheme.criteria))
+        .options(selectinload(Scheme.states))
+    )
+    order_by = [Scheme.name]
+
+    dialect_name = db.get_bind().dialect.name
+    if dialect_name == "postgresql":
+        search_document = func.to_tsvector(
+            "english",
+            func.concat_ws(
+                " ",
+                Scheme.name,
+                func.coalesce(Scheme.description, ""),
+                func.coalesce(Scheme.ministry, ""),
+                func.coalesce(Scheme.category, ""),
+            ),
+        )
+        search_query = func.plainto_tsquery("english", q)
+        query = query.where(search_document.op("@@")(search_query))
+        order_by = [func.ts_rank(search_document, search_query).desc(), Scheme.name]
+    else:
+        search_pattern = f"%{q}%"
+        query = query.where(
             or_(
                 Scheme.name.ilike(search_pattern),
                 Scheme.description.ilike(search_pattern),
@@ -213,15 +238,12 @@ async def search_schemes(
                 Scheme.category.ilike(search_pattern),
             )
         )
-        .options(selectinload(Scheme.criteria))
-        .options(selectinload(Scheme.states))
-    )
 
-    count_query = select(func.count()).select_from(query.subquery())
+    count_query = select(func.count()).select_from(query.order_by(None).subquery())
     total_result = await db.execute(count_query)
     total = total_result.scalar()
 
-    query = query.offset(skip).limit(limit).order_by(Scheme.name)
+    query = query.order_by(*order_by).offset(skip).limit(limit)
     result = await db.execute(query)
     schemes = result.scalars().unique().all()
 

@@ -8,12 +8,13 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://schemes_user:schemes_pass@db:5432/schemes_db
+      REDIS_URL: memory://local
     volumes:
       - .:/app
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -35,20 +36,5 @@ services:
       retries: 5
     restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
-    container_name: scheme_redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
 volumes:
   pgdata:
-  redisdata:

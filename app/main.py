@@ -5,47 +5,64 @@ FastAPI application entry point with lifespan management,
 middleware configuration, and router registration.
 """
 
-import uuid
 import time
+import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-import redis.asyncio as aioredis
-from fastapi import FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 from app.config import get_settings
+from app.core.api_key import require_private_api_key
+from app.core.rate_limit import limiter
 from app.database import engine
 from app.routers import auth as auth_router
 from app.routers import eligibility as eligibility_router
 from app.routers import admin as admin_router
 from app.routers import profile as profile_router
+from app.services.memory_redis import MemoryRedis
 
 settings = get_settings()
 
-# Configure loguru
-logger.add(
-    "logs/api_{time}.log",
-    rotation="10 MB",
-    retention="7 days",
-    level="INFO",
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[request_id]} | {message}",
-)
+# Configure loguru — use default for request_id so non-request logs don't crash
+logger.configure(extra={"request_id": "system"})
+
+try:
+    Path("logs").mkdir(exist_ok=True)
+    logger.add(
+        "logs/api_{time}.log",
+        rotation="10 MB",
+        retention="7 days",
+        level="INFO",
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[request_id]} | {message}",
+    )
+except OSError as exc:
+    logger.warning(f"File logging disabled: {exc}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Application lifespan manager.
-    Handles startup and shutdown events for DB and Redis connections.
+    Handles startup and shutdown events for DB and cache connections.
     """
     # Startup
-    app.state.redis = aioredis.from_url(
-        settings.REDIS_URL,
-        encoding="utf-8",
-        decode_responses=True,
-    )
+    if settings.REDIS_URL.startswith("memory://"):
+        app.state.redis = MemoryRedis()
+        logger.info("Using in-memory cache")
+    else:
+        import redis.asyncio as aioredis
+
+        app.state.redis = aioredis.from_url(
+            settings.REDIS_URL,
+            encoding="utf-8",
+            decode_responses=True,
+        )
     logger.info("Application started")
 
     yield
@@ -78,6 +95,8 @@ app = FastAPI(
         "name": "MIT",
     },
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS middleware
 app.add_middleware(
@@ -138,24 +157,41 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Register routers under /api/v1
-app.include_router(auth_router.router, prefix=settings.API_V1_PREFIX)
-app.include_router(eligibility_router.router, prefix=settings.API_V1_PREFIX)
-app.include_router(profile_router.router, prefix=settings.API_V1_PREFIX)
-app.include_router(admin_router.router, prefix=settings.API_V1_PREFIX)
+private_api_dependencies = [Depends(require_private_api_key)]
+app.include_router(
+    auth_router.router,
+    prefix=settings.API_V1_PREFIX,
+    dependencies=private_api_dependencies,
+)
+app.include_router(
+    eligibility_router.router,
+    prefix=settings.API_V1_PREFIX,
+    dependencies=private_api_dependencies,
+)
+app.include_router(
+    profile_router.router,
+    prefix=settings.API_V1_PREFIX,
+    dependencies=private_api_dependencies,
+)
+app.include_router(
+    admin_router.router,
+    prefix=settings.API_V1_PREFIX,
+    dependencies=private_api_dependencies,
+)
 
 
 @app.get("/health", tags=["Health"])
 async def health_check(request: Request):
     """
     Health check endpoint.
-    Verifies API, database, and Redis connectivity.
+    Verifies API, database, and cache connectivity.
     """
     from app.services.cache_service import CacheService
 
-    redis_ok = False
+    cache_ok = False
     try:
         cache = CacheService(request.app.state.redis)
-        redis_ok = await cache.health_check()
+        cache_ok = await cache.health_check()
     except Exception:
         pass
 
@@ -169,10 +205,12 @@ async def health_check(request: Request):
     except Exception:
         pass
 
-    overall = "ok" if (redis_ok and db_ok) else "degraded"
+    overall = "ok" if (cache_ok and db_ok) else "degraded"
+    cache_backend = "memory" if settings.REDIS_URL.startswith("memory://") else "redis"
 
     return {
         "status": overall,
         "database": "connected" if db_ok else "disconnected",
-        "redis": "connected" if redis_ok else "disconnected",
+        "cache": "connected" if cache_ok else "disconnected",
+        "cache_backend": cache_backend,
     }

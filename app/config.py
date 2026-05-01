@@ -14,11 +14,14 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://schemes_user:schemes_pass@db:5432/schemes_db"
 
-    # Redis
-    REDIS_URL: str = "redis://redis:6379"
+    # Cache
+    # memory://local keeps the API runnable with only PostgreSQL.
+    # A redis:// URL can still be used later if you want an external cache.
+    REDIS_URL: str = "memory://local"
 
     # JWT
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    SECRET_KEY: str = ""
+    PRIVATE_API_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -28,6 +31,11 @@ class Settings(BaseSettings):
     APP_NAME: str = "Government Scheme Eligibility API"
     APP_VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
+    SQL_ECHO: bool = False
+
+    # Seed/admin bootstrap values. Keep real values in .env, not README.
+    ADMIN_EMAIL: str = "admin@example.local"
+    ADMIN_PASSWORD: str = ""
 
     model_config = {
         "env_file": ".env",
